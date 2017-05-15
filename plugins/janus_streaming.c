@@ -2293,10 +2293,30 @@ void janus_streaming_setup_media(janus_plugin_session *handle) {
 }
 
 void janus_streaming_incoming_rtp(janus_plugin_session *handle, int video, char *buf, int len) {
-	if(handle == NULL || handle->stopped || g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
-		return;
-	/* FIXME We don't care about what the browser sends us, we're sendonly */
+        if(handle == NULL || handle->stopped || g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
+                return;
+        struct sockaddr_in sa;
+                int sock;
+                sa.sin_family = AF_INET;
+                sock = socket(AF_INET, SOCK_DGRAM, 0);
+                janus_streaming_session *session = (janus_streaming_session *)handle->plugin_handle;
+                if(!session) {
+                        JANUS_LOG(LOG_ERR, "No session associated with this handle...\n");
+                        return;
+                        }
+                if(session->destroyed)
+                return;
+                /* If this is related to a live RTP mountpoint, any keyframe we can shoot already? */
+                janus_streaming_mountpoint *mp = session->mountpoint;
+                janus_streaming_rtp_source *source = mp->source;
+                sa.sin_port = htons(source->audio_port);
+                sa.sin_addr.s_addr = source->audio_mcast;
+                if (sendto(sock, buf, len, 0, &sa, sizeof(sa)) != len)
+                perror("sendto");
+                close(sock);
+
 }
+
 
 void janus_streaming_incoming_rtcp(janus_plugin_session *handle, int video, char *buf, int len) {
 	if(handle == NULL || handle->stopped || g_atomic_int_get(&stopping) || !g_atomic_int_get(&initialized))
@@ -2464,7 +2484,7 @@ static void *janus_streaming_handler(void *data) {
 						mp->codecs.audio_pt, mp->codecs.audio_fmtp);
 					g_strlcat(sdptemp, buffer, 2048);
 				}
-				g_strlcat(sdptemp, "a=sendonly\r\n", 2048);
+				/*g_strlcat(sdptemp, "a=sendonly\r\n", 2048);*/
 			}
 			if(mp->codecs.video_pt >= 0) {
 				/* Add video line */
@@ -2493,7 +2513,7 @@ static void *janus_streaming_handler(void *data) {
 					"a=rtcp-fb:%d goog-remb\r\n",
 					mp->codecs.video_pt);
 				g_strlcat(sdptemp, buffer, 2048);
-				g_strlcat(sdptemp, "a=sendonly\r\n", 2048);
+				/*g_strlcat(sdptemp, "a=sendonly\r\n", 2048);*/
 			}
 #ifdef HAVE_SCTP
 			if(mp->data) {
