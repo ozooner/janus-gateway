@@ -122,6 +122,18 @@ secret = adminpwd
 ;videopt = 100
 ;videortpmap = VP8/90000
 
+[harris-1]
+type = rtp
+id = 1
+description = 226.0.0.1:5000
+audio = yes
+video = no
+audioport = 5000
+audiomcast = 226.0.0.1
+audiortpmap = pcma/8000
+audiopt = 8
+secret = adminpwd
+
 ;
 ; This is a sample configuration for an RTSP stream: you can specify
 ; the url to connect to and whether or not authentication is needed
